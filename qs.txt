@@ -1,0 +1,11 @@
+# Create virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate        # Linux/Mac
+venv\Scripts\activate           # Windows
+
+# Install all packages
+pip install -r requirements.txt
+
+python train_models/train_emotion.py
+python train_models/train_gaze.py
+python app.py

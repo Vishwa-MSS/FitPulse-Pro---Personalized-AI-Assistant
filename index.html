@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FitPulse - Professional Fitness Assistant</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- MediaPipe Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  <!-- MediaPipe Hands (for gesture navigation) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+  <div class="app-container">
+    <!-- HEADER -->
+    <header class="app-header" role="banner" aria-label="FitPulse header">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <img src="https://img.icons8.com/color/96/dumbbell.png" alt="FitPulse Logo" class="logo"
+          onerror="this.style.display='none'" />
+        <div style="display:flex; flex-direction:column; line-height:1;">
+          <div style="font-weight:700; font-size:18px;">💪 FitPulse Pro</div>
+          <div class="tagline">AI-Powered Fitness Coaching</div>
+        </div>
+      </div>
+      <button onclick="openProfileModal()" class="profile-btn" title="Edit Profile">👤 Profile</button>
+    </header>
+
+    <!-- CHAT -->
+    <main class="chat-container" role="main" aria-label="Chat area">
+      <div id="chat-box" class="chat-box" aria-live="polite"></div>
+      <p id="typing-indicator" class="typing-indicator">FitBuddy is typing...</p>
+    </main>
+
+    <!-- INPUT -->
+    <div class="input-container" role="form" aria-label="Message input">
+      <textarea id="user-input" rows="2"
+        placeholder="Ask me anything: 'Today is leg day' or 'Give me a workout plan'..."
+        aria-label="Message input"></textarea>
+      <button id="send-btn" title="Send message" aria-label="Send message">Send</button>
+      <button id="mic-btn" title="Voice input" aria-label="Voice input">🎤</button>
+      <input id="image-upload" type="file" accept="image/*" style="display:none" />
+      <button id="upload-btn" title="Upload image" aria-label="Upload image">📷</button>
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="quick-actions">
+      <button onclick="sendQuick('Today is push day')">🏋️ Push Day</button>
+      <button onclick="sendQuick('Today is pull day')">💪 Pull Day</button>
+      <button onclick="sendQuick('Today is leg day')">🦵 Leg Day</button>
+      <button onclick="openCalorieCounter()">🔥 Calories</button>
+      <button onclick="openPoseTrainer()">🎯 Form Trainer</button>
+      <button onclick="openPersonalTrainerSession()">🎖️ Start Session</button>
+      <button onclick="openWorkoutPDFModal()">📄 Get PDF Plan</button>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer" role="contentinfo">
+      <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+        <p style="margin:0; font-size:13px;">⭐ FitPulse Pro | AI Coaching with Strict Form Validation</p>
+        <button onclick="clearHistory()" title="Clear chat history" aria-label="Clear chat history">🗑 Clear
+          Chat</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- USER PROFILE MODAL -->
+  <div id="profile-modal" class="modal">
+    <div class="modal-content small-modal">
+      <div class="modal-header">
+        <h2>👤 Your Profile</h2>
+        <button class="close-btn" onclick="closeProfileModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="profile-form" class="profile-form">
+          <div class="form-group">
+            <label>Age (years)</label>
+            <input type="number" id="profile-age" min="10" max="100" required />
+          </div>
+          <div class="form-group">
+            <label>Gender</label>
+            <select id="profile-gender" required>
+              <option value="">Select...</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Height (cm)</label>
+            <input type="number" id="profile-height" min="100" max="250" required />
+          </div>
+          <div class="form-group">
+            <label>Weight (kg)</label>
+            <input type="number" id="profile-weight" min="30" max="300" required />
+          </div>
+          <div class="form-group">
+            <label>Fitness Goal</label>
+            <select id="profile-goal" required>
+              <option value="">Select...</option>
+              <option value="Weight Loss">Weight Loss</option>
+              <option value="Muscle Gain">Muscle Gain</option>
+              <option value="General Fitness">General Fitness</option>
+              <option value="Strength Training">Strength Training</option>
+              <option value="Endurance">Endurance</option>
+            </select>
+          </div>
+          <button type="submit" class="save-profile-btn">💾 Save Profile</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKOUT PDF GENERATION MODAL -->
+  <div id="pdf-modal" class="modal">
+    <div class="modal-content small-modal">
+      <div class="modal-header">
+        <h2>📄 Generate Workout Plan PDF</h2>
+        <button class="close-btn" onclick="closePDFModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="pdf-info">
+          <p>Generate a personalized 7-day workout plan based on your profile.</p>
+          <div class="form-group">
+            <label>Plan Type</label>
+            <select id="pdf-plan-type">
+              <option value="balanced">Balanced (Mix of all)</option>
+              <option value="strength">Strength Focus</option>
+              <option value="endurance">Endurance Focus</option>
+              <option value="weight_loss">Weight Loss Focus</option>
+            </select>
+          </div>
+          <button onclick="generatePDF()" class="generate-pdf-btn" id="generate-pdf-btn">📥 Generate &amp; Download
+            PDF</button>
+          <p id="pdf-status" class="pdf-status"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PERSONAL TRAINER SESSION MODAL -->
+  <div id="trainer-session-modal" class="modal">
+    <div class="modal-content large-modal">
+      <div class="modal-header">
+        <h2>🎖️ Personal Trainer Session</h2>
+        <button class="close-btn" onclick="closeTrainerSession()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Step 1: Session Configuration -->
+        <div id="session-config-step" class="session-step">
+          <h3 style="text-align:center; margin-bottom:24px;">⚙️ Configure Your Workout Session</h3>
+          <p style="text-align:center; color:#6b7280; margin-bottom:32px;">
+            Customize your workout session — I'll be your personal trainer throughout!
+          </p>
+          <div class="session-config-grid">
+            <div class="config-card">
+              <label class="config-label">🎯 Workout Type</label>
+              <select id="session-workout-type" class="config-select">
+                <option value="push">Push Day (Chest, Shoulders, Triceps)</option>
+                <option value="pull">Pull Day (Back, Biceps)</option>
+                <option value="leg">Leg Day (Quads, Hamstrings, Glutes)</option>
+                <option value="upper">Upper Body (Complete)</option>
+                <option value="lower">Lower Body (Complete)</option>
+                <option value="core">Core &amp; Abs</option>
+              </select>
+            </div>
+            <div class="config-card">
+              <label class="config-label">⏱️ Session Duration</label>
+              <select id="session-duration" class="config-select">
+                <option value="short">Short (30-40 min)</option>
+                <option value="medium" selected>Medium (45-60 min)</option>
+                <option value="long">Long (60-75 min)</option>
+              </select>
+            </div>
+            <div class="config-card checkbox-card">
+              <label class="checkbox-label">
+                <input type="checkbox" id="session-include-warmup" checked />
+                <span>🔥 Include Warm-up (5 min)</span>
+              </label>
+            </div>
+            <div class="config-card checkbox-card">
+              <label class="checkbox-label">
+                <input type="checkbox" id="session-include-cardio" />
+                <span>🏃 Add Cardio Finisher (10 min)</span>
+              </label>
+            </div>
+            <div class="config-card checkbox-card">
+              <label class="checkbox-label">
+                <input type="checkbox" id="session-include-cooldown" checked />
+                <span>🧘 Include Cool-down (5 min)</span>
+              </label>
+            </div>
+            <div class="config-card checkbox-card">
+              <label class="checkbox-label">
+                <input type="checkbox" id="session-hydration-reminders" checked />
+                <span>💧 Hydration Reminders</span>
+              </label>
+            </div>
+          </div>
+          <div style="margin-top:32px; text-align:center;">
+            <button onclick="createTrainerSession()" class="create-session-btn">🚀 Create My Session</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Session Overview -->
+        <div id="session-overview-step" class="session-step" style="display:none;">
+          <div class="session-header-card">
+            <h3 id="session-overview-title" style="margin:0; color:#fff;">Workout Session</h3>
+            <p id="session-overview-duration" style="margin:8px 0 0 0; color:rgba(255,255,255,0.8); font-size:15px;">
+              Duration</p>
+          </div>
+          <div class="session-phases-container" id="session-phases-list"></div>
+          <div style="margin-top:24px; text-align:center; display:flex; gap:16px; justify-content:center;">
+            <button onclick="backToSessionConfig()" class="secondary-btn">◀️ Back</button>
+            <button onclick="startTrainerSession()" class="start-session-btn">▶️ Start Workout</button>
+          </div>
+        </div>
+
+        <!-- Step 3: Active Session -->
+        <div id="active-session-step" class="session-step" style="display:none;">
+          <div class="active-phase-header">
+            <div>
+              <h3 id="active-phase-title" style="margin:0; font-size:24px;">Phase Title</h3>
+              <p id="active-phase-subtitle" style="margin:4px 0 0 0; color:rgba(255,255,255,0.8);">Subtitle</p>
+            </div>
+            <div class="phase-timer">
+              <div class="timer-label">Time</div>
+              <div id="phase-timer-display" class="timer-display">0:00</div>
+            </div>
+          </div>
+          <div class="coaching-panel" id="coaching-panel">
+            <div class="coach-avatar">🎖️</div>
+            <div class="coach-message" id="coach-message">Welcome! Let's get started with your workout!</div>
+          </div>
+          <div class="current-exercise-card" id="current-exercise-card" style="display:none;">
+            <div class="exercise-card-header">
+              <div>
+                <h4 id="current-exercise-name" style="margin:0; font-size:20px;">Exercise Name</h4>
+                <p id="current-exercise-info" style="margin:4px 0 0 0; color:#6b7280; font-size:14px;">Sets × Reps</p>
+              </div>
+              <div class="set-counter">
+                <span class="set-label">Set</span>
+                <span id="current-set-display" class="set-number">1/3</span>
+              </div>
+            </div>
+            <div class="exercise-tips-mini">
+              <strong>💡 Key Tip:</strong>
+              <p id="current-exercise-tip" style="margin:4px 0 0 0; font-size:14px; color:#475569;"></p>
+            </div>
+            <div class="exercise-actions">
+              <button onclick="openFormTrackerFromSession()" class="action-btn primary-action">🎯 Start Form
+                Tracker</button>
+              <button onclick="completeCurrentSet()" class="action-btn success-action">✓ Set Complete</button>
+              <button onclick="skipCurrentExercise()" class="action-btn secondary-action">⏭️ Skip Exercise</button>
+            </div>
+            <div id="rest-timer-panel" class="rest-timer-panel" style="display:none;">
+              <div class="rest-icon">💤</div>
+              <h4 style="margin:8px 0;">Rest Time</h4>
+              <div id="rest-timer-display" class="rest-timer-value">60</div>
+              <p style="margin:8px 0 0 0; color:#6b7280; font-size:14px;">seconds remaining</p>
+              <button onclick="skipRest()" class="skip-rest-btn">Skip Rest</button>
+            </div>
+          </div>
+          <div id="hydration-reminder" class="hydration-reminder" style="display:none;">
+            <div class="reminder-icon">💧</div>
+            <p><strong>Hydration Break!</strong> Take a sip of water and catch your breath.</p>
+            <button onclick="dismissHydration()" class="dismiss-btn">Got it!</button>
+          </div>
+          <div class="session-progress-bar">
+            <div class="progress-label">
+              <span>Session Progress</span>
+              <span id="progress-percentage">0%</span>
+            </div>
+            <div class="progress-track">
+              <div id="progress-fill" class="progress-fill" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="session-controls">
+            <button onclick="pauseSession()" class="control-button pause-btn" id="pause-btn">⏸️ Pause</button>
+            <button onclick="endSessionEarly()" class="control-button danger-btn">⏹️ End Session</button>
+          </div>
+        </div>
+
+        <!-- Step 4: Session Complete -->
+        <div id="session-complete-step" class="session-step" style="display:none;">
+          <div class="completion-celebration">
+            <div class="celebration-icon">🎉</div>
+            <h2 style="margin:16px 0; color:#0f172a;">Workout Complete!</h2>
+            <p style="color:#6b7280; font-size:16px; margin-bottom:32px;">Congratulations! You crushed today's workout!
+            </p>
+          </div>
+          <div class="session-summary-cards" id="session-summary"></div>
+          <div class="achievements-section" id="achievements-section"></div>
+          <div
+            style="margin-top:32px; text-align:center; display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+            <button onclick="closeTrainerSession()" class="secondary-btn">✓ Done</button>
+            <button onclick="restartSession()" class="primary-btn">🔄 Start New Session</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POSE TRAINER MODAL -->
+  <div id="pose-trainer-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🎯 AI Form Trainer - Strict Form Validation</h2>
+        <button class="close-btn" onclick="closePoseTrainer()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Workout Selection Screen -->
+        <div id="workout-selection" class="workout-selection">
+          <h3>Choose Your Exercise to Begin:</h3>
+          <p style="text-align:center; color:#6b7280; margin-bottom:24px;">
+            Select an exercise below to start real-time form analysis with MediaPipe AI
+          </p>
+          <div class="workout-grid">
+            <button class="workout-card" onclick="selectWorkout('bicep_curl')">
+              <div class="workout-icon">💪</div>
+              <div class="workout-name">Bicep Curl</div>
+              <div class="workout-desc">Arm strength</div>
+            </button>
+            <button class="workout-card" onclick="selectWorkout('squat')">
+              <div class="workout-icon">🦵</div>
+              <div class="workout-name">Squat</div>
+              <div class="workout-desc">Lower body</div>
+            </button>
+            <button class="workout-card" onclick="selectWorkout('pushup')">
+              <div class="workout-icon">🤸</div>
+              <div class="workout-name">Push-up</div>
+              <div class="workout-desc">Upper body</div>
+            </button>
+            <button class="workout-card" onclick="selectWorkout('shoulder_press')">
+              <div class="workout-icon">🏋️</div>
+              <div class="workout-name">Shoulder Press</div>
+              <div class="workout-desc">Shoulders</div>
+            </button>
+            <button class="workout-card" onclick="selectWorkout('deadlift')">
+              <div class="workout-icon">⚡</div>
+              <div class="workout-name">Deadlift</div>
+              <div class="workout-desc">Full body</div>
+            </button>
+            <button class="workout-card" onclick="selectWorkout('plank')">
+              <div class="workout-icon">🧘</div>
+              <div class="workout-name">Plank</div>
+              <div class="workout-desc">Core</div>
+            </button>
+            <button class="workout-card" onclick="selectWorkout('lunges')">
+              <div class="workout-icon">🦿</div>
+              <div class="workout-name">Lunges</div>
+              <div class="workout-desc">Legs</div>
+            </button>
+            <button class="workout-card" onclick="selectWorkout('pull_up')">
+              <div class="workout-icon">💪</div>
+              <div class="workout-name">Pull-up</div>
+              <div class="workout-desc">Back</div>
+            </button>
+            <button class="workout-card" onclick="selectWorkout('dips')">
+              <div class="workout-icon">🤸</div>
+              <div class="workout-name">Dips</div>
+              <div class="workout-desc">Triceps</div>
+            </button>
+            <button class="workout-card" onclick="selectWorkout('bench_press')">
+              <div class="workout-icon">🏋️</div>
+              <div class="workout-name">Bench Press</div>
+              <div class="workout-desc">Chest</div>
+            </button>
+            <button class="workout-card" onclick="selectWorkout('lateral_raise')">
+              <div class="workout-icon">🏋️</div>
+              <div class="workout-name">Lateral Raise</div>
+              <div class="workout-desc">Shoulders</div>
+            </button>
+            <button class="workout-card" onclick="selectWorkout('barbell_row')">
+              <div class="workout-icon">💪</div>
+              <div class="workout-name">Barbell Row</div>
+              <div class="workout-desc">Back</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Workout Configuration Screen -->
+        <div id="workout-config" class="workout-config" style="display:none;">
+          <h3 id="config-workout-name" style="text-align:center; margin-bottom:24px;">Configure Your Workout</h3>
+          <div class="config-section">
+            <label>Target Rep Count:</label>
+            <input type="number" id="target-reps" value="10" min="1" max="100" />
+            <p class="config-hint">Set how many reps you want to complete. An alarm will sound when you reach your goal!
+            </p>
+          </div>
+          <div class="button-group">
+            <button class="config-btn start-btn" onclick="startWorkout()"><span style="font-size:20px;">▶️</span> Start
+              Workout</button>
+            <button class="config-btn back-btn" onclick="backToSelection()"><span style="font-size:18px;">◀️</span>
+              Back</button>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- CAMERA VIEW — 3/4 Pose Detection + 1/4 Cognitive Panel       -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <div id="camera-view" class="camera-view" style="display:none;">
+
+          <!-- Top header bar -->
+          <div class="workout-header">
+            <h3 id="current-workout-name" style="margin:0;color:#0f172a;font-size:20px;">Exercise Name</h3>
+            <p style="margin:4px 0 0 0;color:#6b7280;font-size:13px;">
+              Stand back 6–8 ft • Full body visible • Strict form required
+            </p>
+          </div>
+
+          <!-- ── MAIN SPLIT LAYOUT ──────────────────────────────────────── -->
+          <div class="acpf-layout">
+
+            <!-- LEFT: 3/4 — Pose detection video + stats overlay -->
+            <div class="acpf-pose-panel">
+              <div class="video-container">
+                <video id="pose-video" class="pose-video" autoplay playsinline></video>
+                <canvas id="pose-canvas" class="pose-canvas"></canvas>
+
+                <!-- Existing stats overlay (unchanged) -->
+                <div class="stats-overlay">
+                  <div class="stat-box">
+                    <div class="stat-label">REPS</div>
+                    <div class="stat-value" id="rep-count">0</div>
+                    <div class="stat-sublabel" id="rep-target">/ 10</div>
+                  </div>
+                  <div class="stat-box">
+                    <div class="stat-label">STAGE</div>
+                    <div class="stat-value" id="stage-display">-</div>
+                  </div>
+                  <div class="stat-box form-status" id="form-status">
+                    <div class="stat-label">FORM</div>
+                    <div class="stat-value" id="form-display">Ready</div>
+                  </div>
+                  <div class="stat-box">
+                    <div class="stat-label">ANGLE</div>
+                    <div class="stat-value" id="angle-display">-</div>
+                  </div>
+                </div>
+
+                <!-- ACPF Risk Banner (appears on top of video) -->
+                <div id="acpf-risk-banner" class="acpf-risk-banner" style="display:none;"></div>
+
+                <div id="loading-overlay" class="loading-overlay">
+                  <div class="loading-spinner"></div>
+                  <p>Initializing AI Pose Detection...</p>
+                </div>
+              </div>
+
+              <!-- Demo + Tips (below the video, same as before) -->
+              <div class="demo-tips">
+                <div class="demo-section">
+                  <h4>📹 Demo Video — Correct Form</h4>
+                  <div class="video-wrapper">
+                    <div class="yt-thumbnail-container" id="yt-thumbnail-container">
+                      <img id="demo-thumbnail" src="" alt="Exercise demo video thumbnail" class="yt-thumbnail"
+                        onerror="this.src='https://img.icons8.com/color/200/play-button-circled.png';this.style.objectFit='contain';this.style.padding='20px';" />
+                      <div class="yt-play-overlay" id="yt-play-overlay">
+                        <div class="yt-play-btn">▶</div>
+                      </div>
+                      <iframe id="demo-video" class="yt-iframe" style="display:none;" width="100%" height="200"
+                        frameborder="0"
+                        allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"
+                        allowfullscreen></iframe>
+                    </div>
+                  </div>
+                </div>
+                <div class="tips-section">
+                  <h4>💡 Form Tips &amp; Guidelines</h4>
+                  <ul id="tips-list" class="tips-list-items"></ul>
+                  <div class="dos-donts">
+                    <div class="dos-section">
+                      <h5 style="color:#10b981;">✓ DO's:</h5>
+                      <ul id="dos-list"></ul>
+                    </div>
+                    <div class="donts-section">
+                      <h5 style="color:#ef4444;">✗ DON'Ts:</h5>
+                      <ul id="donts-list"></ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT: 1/4 — Cognitive Metrics Panel -->
+            <div class="acpf-cognitive-panel">
+
+              <!-- Panel header -->
+              <div class="cognitive-panel-header">
+                <span class="cognitive-panel-title">🧠 Cognitive Monitor</span>
+                <div class="cognitive-engine-status" id="cognitive-engine-status">
+                  <span class="status-dot" id="status-dot-emotion"></span>
+                  <span class="status-dot" id="status-dot-gaze"></span>
+                  <span class="status-dot" id="status-dot-breathing"></span>
+                </div>
+              </div>
+
+              <!-- ACPF Composite Score -->
+              <div class="cog-card acpf-score-card">
+                <div class="cog-card-icon">⚡</div>
+                <div class="cog-card-body">
+                  <div class="cog-card-label">ACPF SCORE</div>
+                  <div class="cog-card-value" id="acpf-score-val">--</div>
+                  <div class="cog-progress-bar">
+                    <div class="cog-progress-fill acpf-fill" id="acpf-progress" style="width:0%"></div>
+                  </div>
+                  <div class="cog-card-sub" id="acpf-action-text">Initializing ACPF...</div>
+                </div>
+              </div>
+
+              <!-- Emotion -->
+              <div class="cog-card">
+                <div class="cog-card-icon">😊</div>
+                <div class="cog-card-body">
+                  <div class="cog-card-label">EMOTION</div>
+                  <div class="cog-card-value" id="emotion-val" style="color:#22d3ee">--</div>
+                  <div class="cog-card-sub" id="emotion-message">Detecting face...</div>
+                </div>
+              </div>
+
+              <!-- Focus / Gaze -->
+              <div class="cog-card">
+                <div class="cog-card-icon">🎯</div>
+                <div class="cog-card-body">
+                  <div class="cog-card-label">FOCUS</div>
+                  <div class="cog-card-value" id="focus-val">0%</div>
+                  <div class="cog-progress-bar">
+                    <div class="cog-progress-fill focus-fill" id="focus-progress" style="width:0%"></div>
+                  </div>
+                  <div class="cog-card-sub" id="focus-eyes">L: -- &nbsp; R: --</div>
+                </div>
+              </div>
+
+              <!-- Breathing -->
+              <div class="cog-card">
+                <div class="cog-card-icon">🫁</div>
+                <div class="cog-card-body">
+                  <div class="cog-card-label">BREATHING</div>
+                  <div class="cog-card-value" id="breathing-val">-- BPM</div>
+                  <div class="cog-card-sub" id="breathing-pattern">Calibrating...</div>
+                </div>
+              </div>
+
+              <!-- Stress -->
+              <div class="cog-card">
+                <div class="cog-card-icon">😤</div>
+                <div class="cog-card-body">
+                  <div class="cog-card-label">STRESS</div>
+                  <div class="cog-card-value" id="stress-val">0%</div>
+                  <div class="cog-progress-bar">
+                    <div class="cog-progress-fill stress-fill" id="stress-progress" style="width:0%"></div>
+                  </div>
+                  <div class="cog-card-sub" id="stress-message">Monitoring...</div>
+                </div>
+              </div>
+
+              <!-- Fatigue -->
+              <div class="cog-card">
+                <div class="cog-card-icon">😴</div>
+                <div class="cog-card-body">
+                  <div class="cog-card-label">FATIGUE</div>
+                  <div class="cog-card-value" id="fatigue-val">0%</div>
+                  <div class="cog-progress-bar">
+                    <div class="cog-progress-fill fatigue-fill" id="fatigue-progress" style="width:0%"></div>
+                  </div>
+                  <div class="cog-card-sub" id="fatigue-message">Monitoring...</div>
+                </div>
+              </div>
+
+              <!-- Motivation -->
+              <div class="cog-card">
+                <div class="cog-card-icon">🔥</div>
+                <div class="cog-card-body">
+                  <div class="cog-card-label">MOTIVATION</div>
+                  <div class="cog-card-value" id="motivation-val">0%</div>
+                  <div class="cog-progress-bar">
+                    <div class="cog-progress-fill motivation-fill" id="motivation-progress" style="width:0%"></div>
+                  </div>
+                  <div class="cog-card-sub" id="motivation-message">Loading...</div>
+                </div>
+              </div>
+
+              <!-- Wellness Trend -->
+              <div class="cog-card wellness-card">
+                <div class="cog-card-icon">📈</div>
+                <div class="cog-card-body">
+                  <div class="cog-card-label">WELLNESS TREND</div>
+                  <div class="cog-card-value" id="wellness-val">--</div>
+                  <div class="cog-card-sub" id="wellness-trend-text">Collecting data...</div>
+                </div>
+              </div>
+
+              <!-- Download Dashboard Button -->
+              <button class="cog-dashboard-btn" id="download-dashboard-btn" onclick="downloadACPFDashboard()"
+                style="display:none;">
+                📊 Download S&amp;C Dashboard
+              </button>
+
+            </div>
+            <!-- end cognitive panel -->
+
+          </div>
+          <!-- end acpf-layout -->
+
+          <!-- Control Buttons (unchanged) -->
+          <div class="trainer-controls">
+            <button class="control-btn stop-btn" onclick="stopWorkout()">
+              <span style="font-size:18px;">⏹</span> Stop Workout
+            </button>
+            <button class="control-btn reset-btn" onclick="resetCounter()">
+              <span style="font-size:18px;">🔄</span> Reset Counter
+            </button>
+            <button class="control-btn switch-btn" onclick="switchWorkout()">
+              <span style="font-size:18px;">🔀</span> Switch Exercise
+            </button>
+            <button class="control-btn dashboard-btn" onclick="downloadACPFDashboard()" id="main-dashboard-btn"
+              style="display:none;">
+              <span style="font-size:18px;">📊</span> S&amp;C Dashboard
+            </button>
+          </div>
+
+        </div>
+        <!-- end camera-view -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Feedback (silent fallback) -->
+  <audio id="success-sound" preload="auto">
+    <source
+      src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmM"
+      type="audio/wav">
+  </audio>
+  <audio id="error-sound" preload="auto">
+    <source
+      src="data:audio/wav;base64,UklGRhIAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YU4AAAC3v8C7sKihoJ+gp7C7wL+3sKihnqCfpq+6v7iwoJ6en6StuL23r6ihnp+krbO7u7Osp6CfAAABXQVZFZm10"
+      type="audio/wav">
+  </audio>
+  <audio id="goal-sound" preload="auto">
+    <source
+      src="data:audio/wav;base64,UklGRhIAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YU4AAAC3v8C7sKihoJ+gp7C7wL+3sKihnqCfpq+6v7iwoJ6en6StuL23r6ihnp+krbO7u7Osp6Cfn6StsLWzrKScnZ+kq7C1tK6lnp6fo6qvtK6onp6fnqWqr7OvqJ2bnp2ko6mvr6iakpqbnKKorq6mmpKSl56kqq6qopqSkpibop+mqaCYkJCQlZueop+fl5OLi42Rkp"
+      type="audio/wav">
+  </audio>
+
+  <!-- ✅ FIX: Detect if opened as file:// and redirect to correct URL -->
+  <script>
+    if (window.location.protocol === 'file:') {
+      document.body.innerHTML = `
+        <div style="
+          font-family: Segoe UI, sans-serif;
+          display: flex; align-items: center; justify-content: center;
+          min-height: 100vh; margin: 0;
+          background: linear-gradient(135deg, #1e40af, #2563eb);
+        ">
+          <div style="
+            background: white; border-radius: 20px; padding: 48px 40px;
+            max-width: 520px; width: 90%; text-align: center;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+          ">
+            <div style="font-size: 64px; margin-bottom: 16px;">⚠️</div>
+            <h1 style="color: #1e40af; margin: 0 0 12px 0; font-size: 26px;">Wrong Way to Open FitPulse!</h1>
+            <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-bottom: 28px;">
+              You opened <code style="background:#f1f5f9;padding:2px 8px;border-radius:4px;">index.html</code> directly as a file.<br><br>
+              This blocks the backend connection due to browser security (CORS).<br><br>
+              <strong style="color:#ef4444;">Do NOT double-click the HTML file!</strong>
+            </p>
+            <div style="background: #f0fdf4; border: 2px solid #10b981; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+              <p style="margin: 0 0 12px 0; font-weight: 700; color: #059669; font-size: 16px;">✅ Correct Way:</p>
+              <ol style="text-align: left; color: #0f172a; line-height: 2; margin: 0; padding-left: 24px; font-size: 15px;">
+                <li>Open Terminal / Command Prompt</li>
+                <li>Go to your project folder: <code style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">cd path/to/fitpulse</code></li>
+                <li>Run: <code style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">python app.py</code></li>
+                <li>Open browser and go to:</li>
+              </ol>
+              <a href="http://localhost:5000" style="
+                display: inline-block; margin-top: 16px;
+                background: linear-gradient(135deg, #2563eb, #1e40af);
+                color: white; text-decoration: none;
+                padding: 14px 32px; border-radius: 10px;
+                font-size: 18px; font-weight: 700;
+                box-shadow: 0 6px 20px rgba(37,99,235,0.35);
+              ">👉 Open http://localhost:5000</a>
+            </div>
+            <p style="color: #94a3b8; font-size: 13px; margin: 0;">
+              FitPulse Pro requires the Flask backend to serve the app.
+            </p>
+          </div>
+        </div>
+      `;
+    }
+  </script>
+
+  <!-- Load Main Script -->
+  <script src="script.js"></script>
+  <script src="gesture_nav.js"></script>
+  <script src="workout_game.js"></script>
+</body>
+
+</html>

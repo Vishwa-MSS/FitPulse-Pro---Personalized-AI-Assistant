@@ -1,0 +1,33 @@
+# FitPulse Pro — Cognitive Fitness System
+# Requirements File
+# Install with: pip install -r requirements.txt
+
+# ─── Core Flask Backend (EXISTING) ────────────────────────
+flask>=2.3.0
+flask-cors>=4.0.0
+requests>=2.31.0
+reportlab>=4.0.0
+groq>=0.4.0
+
+# ─── NEW: Cognitive AI Engines ────────────────────────────
+
+# Deep Learning (Emotion CNN + Eye State CNN)
+tensorflow>=2.13.0        # or tensorflow-cpu if no GPU
+# tensorflow-cpu>=2.13.0  # ← use this on CPU-only machines
+
+# Computer Vision
+opencv-python>=4.8.0
+opencv-contrib-python>=4.8.0   # for extra haar cascades
+
+# YOLO Pose (Gaze detection)
+ultralytics>=8.0.0        # auto-downloads yolov8n-pose.pt on first run
+
+# Signal Processing (Breathing BPM)
+scipy>=1.11.0
+numpy>=1.24.0
+
+# Audio (optional, only if you need alarm sound from gaze module)
+# pygame>=2.5.0           # uncomment if you use the standalone gaze detector
+
+# ─── Utilities ────────────────────────────────────────────
+python-dateutil>=2.8.0
